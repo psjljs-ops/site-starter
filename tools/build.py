@@ -27,6 +27,23 @@ TODAY = datetime.date.today().isoformat()
 e = lambda s: html.escape(str(s), quote=True)
 
 
+def ld_json(src_html, title, desc):
+    """메인 페이지용 구조화 데이터: 무료 웹 도구(WebApplication) + 자주 묻는 질문(FAQPage)."""
+    import re
+    blocks = [{
+        "@context": "https://schema.org", "@type": "WebApplication", "name": cfg["title"].split(" - ")[0],
+        "url": URL + "/", "description": desc, "inLanguage": "ko", "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Any", "isAccessibleForFree": True,
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "KRW"},
+    }]
+    qa = re.findall(r"<details><summary>(.*?)</summary><p>(.*?)</p></details>", src_html, re.S)
+    if qa:
+        strip = lambda x: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", x)).strip()
+        blocks.append({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
+            {"@type": "Question", "name": strip(q), "acceptedAnswer": {"@type": "Answer", "text": strip(a)}} for q, a in qa]})
+    return "\n".join('<script type="application/ld+json">' + json.dumps(b, ensure_ascii=False) + "</script>" for b in blocks)
+
+
 def seo_block(path, title, desc):
     lines = [
         f'<meta name="description" content="{e(desc)}">',
@@ -60,31 +77,35 @@ def render(name, path, title, desc):
     }
     for k, v in values.items():
         s = s.replace("{{" + k + "}}", e(v))
-    s = s.replace("<!--SEO-->", seo_block(path, title, desc))
-    left = [t for t in ("{{", "}}") if t in s]
+    left = [t for t in ("{{", "}}") if t in s]  # 구조화 데이터(JSON)를 넣기 전에 검사
     if left:
         raise SystemExit(f"{name}: 채워지지 않은 {{...}} 자리가 있습니다")
+    seo = seo_block(path, title, desc)
+    if path == "/":
+        seo += "\n" + ld_json(s, title, desc)
+    s = s.replace("<!--SEO-->", seo)
     (DIST / name).write_text(s, encoding="utf-8")
 
 
 def make_og():
     from PIL import Image, ImageDraw, ImageFont
     W, H = 1200, 630
-    im = Image.new("RGB", (W, H), "#f2f4f6")
+    oc = {"bg": "#f2f4f6", "accent": "#3182f6", "accent_soft": "#e8f3ff", "accent_text": "#1b64da", **cfg.get("og_colors", {})}
+    im = Image.new("RGB", (W, H), oc["bg"])
     d = ImageDraw.Draw(im)
     F = lambda size, bold=True: ImageFont.truetype(
         "C:/Windows/Fonts/malgunbd.ttf" if bold else "C:/Windows/Fonts/malgun.ttf", size)
     d.rounded_rectangle((40, 40, W - 40, H - 40), 40, fill="#ffffff")
     w = d.textlength(cfg["eyebrow"], font=F(26)) + 44
-    d.rounded_rectangle((100, 110, 100 + w, 160), 25, fill="#e8f3ff")
-    d.text((122, 116), cfg["eyebrow"], font=F(26), fill="#1b64da")
+    d.rounded_rectangle((100, 110, 100 + w, 160), 25, fill=oc["accent_soft"])
+    d.text((122, 116), cfg["eyebrow"], font=F(26), fill=oc["accent_text"])
     d.text((100, 195), cfg["headline_1"], font=F(66), fill="#191f28")
-    d.text((100, 280), cfg["headline_2"], font=F(66), fill="#3182f6")
+    d.text((100, 280), cfg["headline_2"], font=F(66), fill=oc["accent"])
     d.text((100, 390), cfg["tagline"], font=F(30, False), fill="#4e5968")
     x = 100
     for chip in cfg.get("og_chips", [])[:4]:
         w = d.textlength(chip, font=F(24)) + 40
-        d.rounded_rectangle((x, 460, x + w, 510), 25, fill="#f2f4f6")
+        d.rounded_rectangle((x, 460, x + w, 510), 25, fill=oc["bg"])
         d.text((x + 20, 468), chip, font=F(24), fill="#4e5968")
         x += w + 12
     d.text((W - 100 - d.textlength(URL[8:], font=F(24, False)), 520), URL[8:], font=F(24, False), fill="#8b95a1")
@@ -92,15 +113,15 @@ def make_og():
 
 
 def main():
-    if DIST.exists():
-        shutil.rmtree(DIST)
-    DIST.mkdir()
+    DIST.mkdir(exist_ok=True)
+    for f in DIST.iterdir():  # 폴더는 두고 안의 파일만 지움 (미리보기 서버가 폴더를 쓰고 있어도 됨)
+        shutil.rmtree(f) if f.is_dir() else f.unlink()
     render("index.html", "/", cfg["title"], cfg["description"])
     render("offers.html", "/offers", f'{cfg["offers_title"]} | {cfg["title"]}', cfg["description"])
     render("404.html", "/404", cfg["title"], cfg["description"])
     make_og()
 
-    urls = [("/", "1.0"), ("/offers", "0.6")] + [(f"/offers?c={c}", "0.7") for c in cfg.get("offer_categories", [])]
+    urls = [("/", "1.0"), ("/offers", "0.6")]
     (DIST / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         + "".join(f"  <url><loc>{URL}{p}</loc><lastmod>{TODAY}</lastmod><priority>{pr}</priority></url>\n" for p, pr in urls)

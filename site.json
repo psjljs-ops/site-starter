@@ -6,10 +6,23 @@
   "headline_1": "첫 줄 제목",
   "headline_2": "파란색 둘째 줄",
   "tagline": "한 줄 소개 문구.",
-  "og_chips": ["키워드1", "키워드2", "키워드3"],
+  "og_chips": [
+    "키워드1",
+    "키워드2",
+    "키워드3"
+  ],
   "offers_title": "추천 모음",
-  "offer_categories": ["quote", "shop"],
+  "offer_categories": [
+    "quote",
+    "shop"
+  ],
   "goatcounter": "",
   "google_verification": "",
-  "naver_verification": ""
+  "naver_verification": "",
+  "og_colors": {
+    "bg": "#f2f4f6",
+    "accent": "#3182f6",
+    "accent_soft": "#e8f3ff",
+    "accent_text": "#1b64da"
+  }
 }
