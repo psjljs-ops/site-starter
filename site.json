@@ -1,0 +1,15 @@
+{
+  "name": "my-site",
+  "title": "사이트 이름",
+  "description": "검색 결과와 공유 미리보기에 나오는 한두 문장 설명.",
+  "eyebrow": "무료 · 회원가입 없음",
+  "headline_1": "첫 줄 제목",
+  "headline_2": "파란색 둘째 줄",
+  "tagline": "한 줄 소개 문구.",
+  "og_chips": ["키워드1", "키워드2", "키워드3"],
+  "offers_title": "추천 모음",
+  "offer_categories": ["quote", "shop"],
+  "goatcounter": "",
+  "google_verification": "",
+  "naver_verification": ""
+}
